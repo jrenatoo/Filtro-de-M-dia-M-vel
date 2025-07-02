@@ -1,1 +1,1 @@
-# Filtro-de-M-dia-M-vel
+Filtro de média móvel
