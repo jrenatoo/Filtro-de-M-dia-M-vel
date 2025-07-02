@@ -1,0 +1,6 @@
+
+State Machine - |moving_average_filter|control_unit:U_Control|current_state
+Name current_state.S_VALID current_state.S_UPDATE current_state.S_IDLE 
+current_state.S_IDLE 0 0 0 
+current_state.S_UPDATE 0 1 1 
+current_state.S_VALID 1 0 1 
