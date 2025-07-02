@@ -1,0 +1,77 @@
+-- datapath.vhd
+-- Contém os registradores para as amostras e a lógica combinacional para o cálculo.
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity datapath is
+    port (
+        CLK            : in  std_logic;
+        RST            : in  std_logic;
+        
+        -- Sinais de Controle vindos da Unidade de Controle
+        SHIFT_EN       : in  std_logic; -- Habilita o deslocamento/atualização das amostras
+        
+        -- Dados
+        DATA_IN        : in  std_logic_vector(7 downto 0);
+        DATA_OUT       : out std_logic_vector(7 downto 0)
+    );
+end entity datapath;
+
+architecture rtl of datapath is
+
+    -- Sinais para armazenar as 4 amostras (nossos registradores)
+    signal sample_0 : std_logic_vector(7 downto 0) := (others => '0');
+    signal sample_1 : std_logic_vector(7 downto 0) := (others => '0');
+    signal sample_2 : std_logic_vector(7 downto 0) := (others => '0');
+    signal sample_3 : std_logic_vector(7 downto 0) := (others => '0');
+
+    -- Sinais para a lógica de soma (combinacional)
+    -- A soma de quatro números de 8 bits pode resultar em um número de 10 bits (4 * 255 = 1020)
+    signal sum_stage1_a : unsigned(8 downto 0);
+    signal sum_stage1_b : unsigned(8 downto 0);
+    signal sum_total    : unsigned(9 downto 0);
+    
+    -- Sinal para o resultado final da média (após a divisão)
+    signal average      : std_logic_vector(7 downto 0);
+
+begin
+
+    -- Processo para os 4 Registradores de Amostras
+    -- Este é o único bloco sequencial (com clock) no datapath.
+    process(CLK, RST)
+    begin
+        if RST = '1' then
+            sample_0 <= (others => '0');
+            sample_1 <= (others => '0');
+            sample_2 <= (others => '0');
+            sample_3 <= (others => '0');
+        elsif rising_edge(CLK) then
+            if SHIFT_EN = '1' then
+                -- A nova amostra entra em sample_0
+                -- As amostras antigas são deslocadas
+                sample_0 <= DATA_IN;
+                sample_1 <= sample_0;
+                sample_2 <= sample_1;
+                sample_3 <= sample_2;
+            end if;
+        end if;
+    end process;
+
+    -- Lógica de Cálculo (PURAMENTE COMBINACIONAL)
+    -- Etapa 1 da Soma: somamos em pares para evitar um somador muito grande
+    sum_stage1_a <= unsigned('0' & sample_0) + unsigned('0' & sample_1);
+    sum_stage1_b <= unsigned('0' & sample_2) + unsigned('0' & sample_3);
+
+    -- Etapa 2 da Soma: somamos os resultados da etapa anterior
+    sum_total <= unsigned('0' & sum_stage1_a) + unsigned('0' & sum_stage1_b);
+
+    -- Divisão por 4 (implementada como um deslocamento de 2 bits para a direita)
+    -- Pega os bits de 9 a 2 da soma total.
+    average <= std_logic_vector(sum_total(9 downto 2));
+    
+    -- Atribui o resultado final à porta de saída
+    DATA_OUT <= average;
+
+end architecture rtl;
